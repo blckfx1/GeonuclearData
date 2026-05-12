@@ -1,0 +1,66 @@
+cat > index.html << 'EOF'
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GeoNuclearData — Карта АЭС мира</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        body { margin:0; padding:0; font-family: Arial, sans-serif; }
+        #map { height: 100vh; width: 100%; }
+        h1 { position: absolute; top: 10px; left: 50px; z-index: 1000; background: white; padding: 8px 15px; border-radius: 5px; box-shadow: 0 0 10px rgba(0,0,0,0.3); }
+    </style>
+</head>
+<body>
+    <h1>🌍 Ядерные электростанции мира</h1>
+    <div id="map"></div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+
+    <script>
+        const map = L.map('map').setView([30, 0], 2);
+
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; OpenStreetMap contributors'
+        }).addTo(map);
+
+        Papa.parse('data/csv/denormalized/nuclear_power_plants.csv', {
+            download: true,
+            header: true,
+            complete: function(results) {
+                results.data.forEach(row => {
+                    if (row.Latitude && row.Longitude) {
+                        const lat = parseFloat(row.Latitude);
+                        const lng = parseFloat(row.Longitude);
+
+                        let color = 'blue';
+                        if (row.Status === 'Operational') color = 'green';
+                        else if (row.Status === 'Under Construction') color = 'orange';
+                        else if (row.Status === 'Shutdown') color = 'red';
+
+                        const marker = L.circleMarker([lat, lng], {
+                            radius: 6,
+                            fillColor: color,
+                            color: '#000',
+                            weight: 1,
+                            opacity: 1,
+                            fillOpacity: 0.8
+                        }).addTo(map);
+
+                        marker.bindPopup(`
+                            <b>${row.Name || 'Без названия'}</b><br>
+                            Страна: ${row.Country || ''}<br>
+                            Статус: ${row.Status || ''}<br>
+                            Мощность: ${row.Capacity ? row.Capacity + ' MWe' : '—'}<br>
+                            Тип реактора: ${row.ReactorType || '—'}
+                        `);
+                    }
+                });
+            }
+        });
+    </script>
+</body>
+</html>
+EOF
